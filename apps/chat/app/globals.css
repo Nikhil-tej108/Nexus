@@ -1,14 +1,23 @@
 :root {
-  --paper: #f5f7fb;
-  --surface: #ffffff;
-  --surface-2: #eef2f9;
-  --line: rgba(18, 42, 88, 0.12);
-  --line-strong: rgba(18, 42, 88, 0.22);
+  --bg-light: #f8f9fa;
+  --bg-muted: #f5f5f5;
+  --surface-charcoal: #2d3142;
+  --surface-charcoal-2: #333333;
+  --primary-cyan: #35c7e0;
+  --primary-cyan-deep: #0a8faa;
+  --primary-cyan-tint: rgba(53, 199, 224, 0.14);
+  --accent-coral: #e2534c;
 
-  --cobalt: #0047ab;
-  --cobalt-deep: #0d3a82;
-  --cobalt-tint: rgba(0, 71, 171, 0.08);
-  --cobalt-tint-strong: rgba(0, 71, 171, 0.14);
+  --paper: var(--bg-light);
+  --surface: #ffffff;
+  --surface-2: var(--bg-muted);
+  --line: rgba(45, 49, 66, 0.15);
+  --line-strong: rgba(45, 49, 66, 0.27);
+
+  --cobalt: var(--primary-cyan);
+  --cobalt-deep: var(--primary-cyan-deep);
+  --cobalt-tint: var(--primary-cyan-tint);
+  --cobalt-tint-strong: rgba(53, 199, 224, 0.3);
 
   --green: #14543c;
   --green-2: #1c7350;
@@ -16,7 +25,7 @@
 
   --text: #142033;
   --muted: #5b6b80;
-  --danger: #a8321f;
+  --danger: var(--accent-coral);
   --danger-tint: rgba(168, 50, 31, 0.08);
 
   --font-serif:
@@ -54,7 +63,7 @@ a {
 }
 
 *:focus-visible {
-  outline: 2px solid var(--cobalt);
+  outline: 2px solid var(--primary-cyan-deep);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -85,4 +94,12 @@ button {
     transition: none !important;
     animation: none !important;
   }
+}
+
+.md-table {
+  border-radius: 8px;
+}
+
+.md-table tbody tr:nth-child(even) td {
+  background: #ffffff;
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 function getCsrf() {
   const m = document.cookie.match(/(?:^|; )nexus_csrf=([^;]*)/);
@@ -19,180 +21,43 @@ async function api(path, opts = {}) {
   return data;
 }
 
-/* ---------------------------------------------------------------- */
-/* Minimal markdown renderer (no external dependency).               */
-/* Supports: headings, paragraphs, bold/italic, inline code, code    */
-/* fences, links, blockquotes, ordered + unordered lists.            */
-/* ---------------------------------------------------------------- */
-
-function parseInline(str, keyPrefix) {
-  const nodes = [];
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
-  let lastIndex = 0;
-  let m;
-  let key = 0;
-  while ((m = regex.exec(str))) {
-    if (m.index > lastIndex) nodes.push(str.slice(lastIndex, m.index));
-    const token = m[0];
-    if (token.startsWith("`")) {
-      nodes.push(
-        <code key={`${keyPrefix}${key++}`} style={mdInlineCode}>
-          {token.slice(1, -1)}
-        </code>
-      );
-    } else if (token.startsWith("**")) {
-      nodes.push(<strong key={`${keyPrefix}${key++}`}>{token.slice(2, -2)}</strong>);
-    } else if (token.startsWith("*")) {
-      nodes.push(<em key={`${keyPrefix}${key++}`}>{token.slice(1, -1)}</em>);
-    } else if (token.startsWith("[")) {
-      const match = token.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      nodes.push(
-        <a
-          key={`${keyPrefix}${key++}`}
-          href={match[2]}
-          target="_blank"
-          rel="noreferrer"
-          style={mdLink}
-        >
-          {match[1]}
-        </a>
-      );
-    }
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < str.length) nodes.push(str.slice(lastIndex));
-  return nodes;
-}
-
-function MdHeading({ level, children }) {
-  const style = mdHeading(level);
-  if (level <= 1) return <h3 style={style}>{children}</h3>;
-  if (level === 2) return <h4 style={style}>{children}</h4>;
-  if (level === 3) return <h5 style={style}>{children}</h5>;
-  return <h6 style={style}>{children}</h6>;
-}
-
 function Markdown({ text }) {
   if (!text) return null;
-  const lines = text.split("\n");
-  const blocks = [];
-  let i = 0;
-  let key = 0;
-  let listBuffer = null;
-
-  function flushList() {
-    if (!listBuffer) return;
-    const Tag = listBuffer.type === "ol" ? "ol" : "ul";
-    blocks.push(
-      <Tag key={`list-${key++}`} style={listBuffer.type === "ol" ? mdOl : mdUl}>
-        {listBuffer.items.map((it, idx) => (
-          <li key={idx} style={mdLi}>
-            {parseInline(it, `li${key}-${idx}-`)}
-          </li>
-        ))}
-      </Tag>
-    );
-    listBuffer = null;
-  }
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.trim().startsWith("```")) {
-      flushList();
-      const codeLines = [];
-      i++;
-      while (i < lines.length && !lines[i].trim().startsWith("```")) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      i++;
-      blocks.push(
-        <pre key={`pre-${key++}`} style={mdPre}>
-          <code>{codeLines.join("\n")}</code>
-        </pre>
-      );
-      continue;
-    }
-
-    const headerMatch = line.match(/^(#{1,4})\s+(.*)/);
-    if (headerMatch) {
-      flushList();
-      blocks.push(
-        <MdHeading key={`h-${key++}`} level={headerMatch[1].length}>
-          {parseInline(headerMatch[2], `h${key}-`)}
-        </MdHeading>
-      );
-      i++;
-      continue;
-    }
-
-    if (line.trim().startsWith(">")) {
-      flushList();
-      const quoteLines = [];
-      while (i < lines.length && lines[i].trim().startsWith(">")) {
-        quoteLines.push(lines[i].trim().replace(/^>\s?/, ""));
-        i++;
-      }
-      blocks.push(
-        <blockquote key={`bq-${key++}`} style={mdQuote}>
-          {parseInline(quoteLines.join(" "), `bq${key}-`)}
-        </blockquote>
-      );
-      continue;
-    }
-
-    const ulMatch = line.match(/^\s*[-*]\s+(.*)/);
-    if (ulMatch) {
-      if (!listBuffer || listBuffer.type !== "ul") {
-        flushList();
-        listBuffer = { type: "ul", items: [] };
-      }
-      listBuffer.items.push(ulMatch[1]);
-      i++;
-      continue;
-    }
-
-    const olMatch = line.match(/^\s*\d+\.\s+(.*)/);
-    if (olMatch) {
-      if (!listBuffer || listBuffer.type !== "ol") {
-        flushList();
-        listBuffer = { type: "ol", items: [] };
-      }
-      listBuffer.items.push(olMatch[1]);
-      i++;
-      continue;
-    }
-
-    if (line.trim() === "") {
-      flushList();
-      i++;
-      continue;
-    }
-
-    flushList();
-    const paraLines = [line];
-    i++;
-    while (
-      i < lines.length &&
-      lines[i].trim() !== "" &&
-      !lines[i].trim().startsWith("```") &&
-      !lines[i].match(/^(#{1,4})\s+/) &&
-      !lines[i].trim().startsWith(">") &&
-      !lines[i].match(/^\s*[-*]\s+/) &&
-      !lines[i].match(/^\s*\d+\.\s+/)
-    ) {
-      paraLines.push(lines[i]);
-      i++;
-    }
-    blocks.push(
-      <p key={`p-${key++}`} style={mdP}>
-        {parseInline(paraLines.join(" "), `p${key}-`)}
-      </p>
-    );
-  }
-  flushList();
-  return <>{blocks}</>;
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p style={mdP}>{children}</p>,
+        h1: ({ children }) => <h3 style={mdHeading(1)}>{children}</h3>,
+        h2: ({ children }) => <h4 style={mdHeading(2)}>{children}</h4>,
+        h3: ({ children }) => <h5 style={mdHeading(3)}>{children}</h5>,
+        h4: ({ children }) => <h6 style={mdHeading(4)}>{children}</h6>,
+        ul: ({ children }) => <ul style={mdUl}>{children}</ul>,
+        ol: ({ children }) => <ol style={mdOl}>{children}</ol>,
+        li: ({ children }) => <li style={mdLi}>{children}</li>,
+        blockquote: ({ children }) => <blockquote style={mdQuote}>{children}</blockquote>,
+        pre: ({ children }) => <pre style={mdPre}>{children}</pre>,
+        code: ({ inline, children }) =>
+          inline ? <code style={mdInlineCode}>{children}</code> : <code>{children}</code>,
+        a: ({ href, children }) => (
+          <a href={href} target="_blank" rel="noreferrer" style={mdLink}>
+            {children}
+          </a>
+        ),
+        hr: () => <hr style={mdHr} />,
+        table: ({ children }) => (
+          <div style={mdTableWrap} className="md-table-wrap">
+            <table style={mdTable} className="md-table">{children}</table>
+          </div>
+        ),
+        thead: ({ children }) => <thead style={mdThead}>{children}</thead>,
+        th: ({ children }) => <th style={mdTh}>{children}</th>,
+        td: ({ children }) => <td style={mdTd}>{children}</td>,
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
 }
 
 /* ---------------------------------------------------------------- */
@@ -354,7 +219,7 @@ export default function Page() {
         <span style={statusPill(internal)}>
           {internal ? "Internal · citations on" : "Visitor · generic sources only"}
         </span>
-        <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--muted)" }}>{me.email}</span>
+        <span style={{ marginLeft: "auto", fontSize: 13, color: "#dce5ea" }}>{me.email}</span>
       </header>
       <div ref={scroller} style={thread}>
         {messages.length === 0 && (
@@ -422,22 +287,22 @@ const hero = { display: "flex", gap: 16, alignItems: "center", marginBottom: 28 
 const mark = {
   width: 52,
   height: 52,
-  borderRadius: 12,
+  borderRadius: 10,
   border: "1px solid var(--line-strong)",
-  background: "linear-gradient(160deg, var(--cobalt), var(--cobalt-deep))",
+  background: "linear-gradient(160deg, var(--primary-cyan), var(--primary-cyan-deep))",
   display: "grid",
   placeItems: "center",
   color: "#fff",
   fontFamily: "var(--font-serif)",
   fontSize: 24,
-  boxShadow: "0 6px 16px rgba(13, 58, 130, 0.18)",
+  boxShadow: "0 6px 16px rgba(2, 107, 135, 0.22)",
 };
 const h1 = { margin: 0, fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 32, color: "var(--text)" };
 const sub = { margin: "4px 0 0", color: "var(--muted)", fontSize: 14 };
 const card = {
   background: "var(--surface)",
   border: "1px solid var(--line)",
-  borderRadius: 16,
+  borderRadius: 12,
   padding: 24,
   boxShadow: "0 1px 2px rgba(20, 32, 51, 0.04), 0 12px 32px rgba(20, 32, 51, 0.06)",
 };
@@ -448,7 +313,7 @@ const tabBtn = (on) => ({
   borderRadius: 8,
   border: "none",
   background: on ? "var(--surface)" : "transparent",
-  color: on ? "var(--cobalt)" : "var(--muted)",
+  color: on ? "var(--primary-cyan-deep)" : "var(--muted)",
   fontWeight: on ? 600 : 500,
   fontSize: 14,
   boxShadow: on ? "0 1px 3px rgba(20,32,51,0.10)" : "none",
@@ -471,48 +336,48 @@ const primary = {
   padding: "12px 16px",
   borderRadius: 10,
   border: "none",
-  background: "linear-gradient(180deg, var(--cobalt), var(--cobalt-deep))",
+  background: "linear-gradient(180deg, var(--primary-cyan), var(--primary-cyan-deep))",
   color: "#fff",
   fontWeight: 600,
   fontSize: 14.5,
   cursor: "pointer",
   transition: "opacity 150ms ease, transform 150ms ease",
 };
-const err = { color: "var(--danger)", fontSize: 13, margin: 0 };
+const err = { color: "var(--accent-coral)", fontSize: 13, margin: 0 };
 const footNote = { textAlign: "center", color: "var(--muted)", fontSize: 12.5, marginTop: 18 };
 
-const chatShell = { height: "100vh", display: "flex", flexDirection: "column", background: "var(--paper)" };
+const chatShell = { height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-light)" };
 const topbar = {
   display: "flex",
   gap: 16,
   alignItems: "center",
   padding: "12px 22px",
   borderBottom: "1px solid var(--line)",
-  background: "var(--surface)",
+  background: "var(--surface-charcoal)",
 };
 const brandRow = { display: "flex", alignItems: "center", gap: 10 };
 const markSmall = {
   width: 30,
   height: 30,
-  borderRadius: 8,
-  background: "linear-gradient(160deg, var(--cobalt), var(--cobalt-deep))",
+  borderRadius: 10,
+  background: "linear-gradient(160deg, var(--primary-cyan), var(--primary-cyan-deep))",
   color: "#fff",
   display: "grid",
   placeItems: "center",
   fontFamily: "var(--font-serif)",
   fontSize: 15,
 };
-const brandWord = { fontFamily: "var(--font-serif)", fontSize: 17, color: "var(--text)", fontWeight: 600 };
+const brandWord = { fontFamily: "var(--font-serif)", fontSize: 17, color: "#f6f9fb", fontWeight: 600 };
 const statusPill = (internal) => ({
   fontSize: 12.5,
-  color: internal ? "var(--green)" : "var(--muted)",
-  background: internal ? "var(--green-tint)" : "var(--surface-2)",
-  border: `1px solid ${internal ? "rgba(20,84,60,0.18)" : "var(--line)"}`,
+  color: internal ? "var(--primary-cyan)" : "#dce5ea",
+  background: internal ? "rgba(53, 199, 224, 0.14)" : "rgba(255, 255, 255, 0.08)",
+  border: `1px solid ${internal ? "rgba(53, 199, 224, 0.30)" : "rgba(255,255,255,0.15)"}`,
   borderRadius: 999,
   padding: "4px 10px",
 });
 
-const thread = { flex: 1, overflow: "auto", padding: "30px 20px 12px", maxWidth: 820, width: "100%", margin: "0 auto" };
+const thread = { flex: 1, overflow: "auto", padding: "24px 20px 8px", maxWidth: 860, width: "100%", margin: "0 auto" };
 const empty = { textAlign: "center", marginTop: "16vh" };
 const emptyTitle = { fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 22, margin: "0 0 8px", color: "var(--text)" };
 
@@ -526,21 +391,21 @@ const avatar = (role, refused) => ({
   flexShrink: 0,
   width: 30,
   height: 30,
-  borderRadius: 8,
+  borderRadius: 10,
   display: "grid",
   placeItems: "center",
   fontSize: 12.5,
   fontWeight: 700,
   marginTop: 2,
-  color: role === "user" ? "var(--cobalt)" : "#fff",
-  background: role === "user" ? "var(--cobalt-tint)" : refused ? "var(--danger)" : "var(--green)",
+  color: role === "user" ? "var(--primary-cyan-deep)" : "#fff",
+  background: role === "user" ? "var(--primary-cyan-tint)" : refused ? "var(--accent-coral)" : "var(--primary-cyan)",
 });
 const bubble = (role, refused) => ({
   maxWidth: "78%",
   padding: "13px 16px",
-  borderRadius: role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-  background: role === "user" ? "var(--cobalt-tint)" : "var(--surface)",
-  border: `1px solid ${refused ? "rgba(168,50,31,0.30)" : role === "user" ? "rgba(0,71,171,0.16)" : "var(--line)"}`,
+  borderRadius: role === "user" ? "12px 12px 8px 12px" : "12px 12px 12px 8px",
+  background: role === "user" ? "var(--primary-cyan-tint)" : "var(--surface)",
+  border: `1px solid ${refused ? "rgba(226,83,76,0.35)" : role === "user" ? "rgba(53, 199, 224, 0.30)" : "var(--line)"}`,
   fontFamily: "var(--font-serif)",
   fontSize: 15.5,
   color: "var(--text)",
@@ -552,7 +417,7 @@ const dot = (idx) => ({
   width: 6,
   height: 6,
   borderRadius: "50%",
-  background: "var(--muted)",
+  background: "var(--primary-cyan)",
   display: "inline-block",
   animation: `nexus-bounce 1.1s ${idx * 0.15}s infinite ease-in-out`,
 });
@@ -561,9 +426,9 @@ const cites = { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 };
 const chip = {
   fontFamily: "var(--font-sans)",
   fontSize: 11.5,
-  color: "var(--green)",
-  background: "var(--green-tint)",
-  border: "1px solid rgba(20,84,60,0.18)",
+  color: "var(--primary-cyan-deep)",
+  background: "var(--primary-cyan-tint)",
+  border: "1px solid rgba(53, 199, 224, 0.28)",
   borderRadius: 999,
   padding: "3px 9px",
 };
@@ -571,7 +436,9 @@ const chip = {
 const composer = {
   display: "flex",
   gap: 10,
-  padding: 16,
+  padding: 14,
+  borderTop: "1px solid var(--line)",
+  background: "var(--bg-muted)",
   maxWidth: 820,
   width: "100%",
   margin: "0 auto 14px",
@@ -579,7 +446,7 @@ const composer = {
 
 /* ---------------------------- markdown styles ---------------------------- */
 
-const mdP = { margin: "0 0 10px", lineHeight: 1.65 };
+const mdP = { margin: "0 0 10px", lineHeight: 1.65, overflowWrap: "anywhere" };
 const mdHeading = (level) => ({
   fontFamily: "var(--font-serif)",
   fontWeight: 600,
@@ -593,7 +460,7 @@ const mdLi = { marginBottom: 4, lineHeight: 1.6 };
 const mdQuote = {
   margin: "0 0 10px",
   padding: "4px 14px",
-  borderLeft: "3px solid var(--cobalt)",
+  borderLeft: "3px solid var(--primary-cyan)",
   color: "var(--muted)",
   fontStyle: "italic",
 };
@@ -616,4 +483,10 @@ const mdInlineCode = {
   borderRadius: 4,
   padding: "1px 5px",
 };
-const mdLink = { color: "var(--cobalt)", textDecoration: "underline", textUnderlineOffset: 2 };
+const mdLink = { color: "var(--primary-cyan-deep)", textDecoration: "underline", textUnderlineOffset: 2 };
+const mdHr = { border: 0, borderTop: "1px solid var(--line)", margin: "10px 0 14px" };
+const mdTableWrap = { overflowX: "auto", margin: "0 0 10px" };
+const mdTable = { width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 320 };
+const mdThead = { background: "var(--bg-muted)" };
+const mdTh = { border: "1px solid var(--line)", textAlign: "left", padding: "8px 10px", fontWeight: 600 };
+const mdTd = { border: "1px solid var(--line)", padding: "8px 10px", background: "rgba(248, 249, 250, 0.55)" };
