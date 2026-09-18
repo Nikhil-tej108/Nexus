@@ -1,0 +1,20 @@
+[tool.pytest.ini_options]
+# Run from the backend/ directory so `app` is importable
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+log_cli = true
+log_cli_level = "WARNING"
+addopts = [
+    "--tb=short",
+    "-q",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
