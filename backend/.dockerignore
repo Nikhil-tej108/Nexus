@@ -1,0 +1,17 @@
+# The build context is this directory, so the repo-root .dockerignore does not apply here.
+__pycache__
+**/__pycache__
+*.py[cod]
+.venv
+venv
+.git
+.gitignore
+.env
+.env.*
+.pytest_cache
+.mypy_cache
+.ruff_cache
+data
+Dockerfile
+.dockerignore
+*.md

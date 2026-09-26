@@ -1,0 +1,11 @@
+# The build context is this directory, so the repo-root .dockerignore does not apply here.
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+npm-debug.log*
+Dockerfile
+.dockerignore
+*.md
